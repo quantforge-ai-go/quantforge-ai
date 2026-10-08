@@ -1,0 +1,603 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+
+    <title>QuantForge AI — Algorithmic Research Infrastructure</title>
+
+    <meta name="description"
+          content="QuantForge AI is an AI-powered research and development platform for algorithmic trading systems.">
+
+    <style>
+        * {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+        }
+
+        html {
+            scroll-behavior: smooth;
+        }
+
+        body {
+            font-family: Inter, Arial, Helvetica, sans-serif;
+            background: #070b14;
+            color: #f5f7fb;
+            line-height: 1.6;
+        }
+
+        a {
+            color: inherit;
+            text-decoration: none;
+        }
+
+        .container {
+            width: min(1120px, 90%);
+            margin: auto;
+        }
+
+        /* NAVBAR */
+
+        nav {
+            height: 76px;
+            display: flex;
+            align-items: center;
+            justify-content: space-between;
+            border-bottom: 1px solid rgba(255,255,255,0.07);
+        }
+
+        .logo {
+            display: flex;
+            align-items: center;
+            gap: 12px;
+            font-size: 20px;
+            font-weight: 700;
+            letter-spacing: -0.5px;
+        }
+
+        .logo-mark {
+            width: 34px;
+            height: 34px;
+            border: 2px solid #65a8ff;
+            border-radius: 10px;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            color: #65a8ff;
+            font-weight: 800;
+        }
+
+        .nav-links {
+            display: flex;
+            gap: 28px;
+            color: #aab4c7;
+            font-size: 14px;
+        }
+
+        .nav-links a:hover {
+            color: white;
+        }
+
+        /* HERO */
+
+        .hero {
+            padding: 120px 0 110px;
+            text-align: center;
+        }
+
+        .eyebrow {
+            display: inline-block;
+            padding: 7px 14px;
+            border: 1px solid rgba(101,168,255,0.25);
+            border-radius: 30px;
+            color: #8dbfff;
+            font-size: 13px;
+            margin-bottom: 28px;
+            background: rgba(101,168,255,0.05);
+        }
+
+        h1 {
+            max-width: 900px;
+            margin: auto;
+            font-size: clamp(48px, 8vw, 86px);
+            line-height: 0.98;
+            letter-spacing: -4px;
+        }
+
+        .gradient {
+            background: linear-gradient(90deg, #ffffff, #70aaff);
+            -webkit-background-clip: text;
+            -webkit-text-fill-color: transparent;
+        }
+
+        .hero p {
+            max-width: 650px;
+            margin: 30px auto 0;
+            color: #aab4c7;
+            font-size: 19px;
+        }
+
+        .buttons {
+            margin-top: 38px;
+            display: flex;
+            justify-content: center;
+            gap: 14px;
+            flex-wrap: wrap;
+        }
+
+        .button {
+            padding: 13px 22px;
+            border-radius: 9px;
+            font-weight: 600;
+            font-size: 14px;
+            transition: 0.2s;
+        }
+
+        .button-primary {
+            background: #f5f7fb;
+            color: #070b14;
+        }
+
+        .button-primary:hover {
+            transform: translateY(-2px);
+        }
+
+        .button-secondary {
+            border: 1px solid rgba(255,255,255,0.15);
+            color: #d9dfeb;
+        }
+
+        .button-secondary:hover {
+            background: rgba(255,255,255,0.05);
+        }
+
+        /* SECTIONS */
+
+        section {
+            padding: 100px 0;
+            border-top: 1px solid rgba(255,255,255,0.06);
+        }
+
+        .section-label {
+            color: #70aaff;
+            text-transform: uppercase;
+            letter-spacing: 2px;
+            font-size: 12px;
+            font-weight: 700;
+            margin-bottom: 18px;
+        }
+
+        h2 {
+            font-size: clamp(32px, 5vw, 52px);
+            line-height: 1.1;
+            letter-spacing: -2px;
+            max-width: 750px;
+        }
+
+        .section-intro {
+            color: #aab4c7;
+            max-width: 680px;
+            margin-top: 20px;
+            font-size: 17px;
+        }
+
+        /* CARDS */
+
+        .grid {
+            margin-top: 55px;
+            display: grid;
+            grid-template-columns: repeat(3, 1fr);
+            gap: 18px;
+        }
+
+        .card {
+            padding: 30px;
+            border: 1px solid rgba(255,255,255,0.08);
+            border-radius: 14px;
+            background: rgba(255,255,255,0.025);
+        }
+
+        .card-number {
+            color: #70aaff;
+            font-size: 13px;
+            font-weight: 700;
+        }
+
+        .card h3 {
+            margin-top: 20px;
+            font-size: 20px;
+        }
+
+        .card p {
+            color: #9da8bb;
+            margin-top: 12px;
+            font-size: 14px;
+        }
+
+        /* RESEARCH */
+
+        .research {
+            margin-top: 50px;
+            padding: 40px;
+            border: 1px solid rgba(101,168,255,0.18);
+            border-radius: 16px;
+            background: linear-gradient(
+                135deg,
+                rgba(101,168,255,0.07),
+                rgba(255,255,255,0.015)
+            );
+        }
+
+        .research h3 {
+            font-size: 27px;
+        }
+
+        .research p {
+            margin-top: 15px;
+            color: #aab4c7;
+            max-width: 760px;
+        }
+
+        /* FOOTER */
+
+        footer {
+            padding: 40px 0;
+            border-top: 1px solid rgba(255,255,255,0.06);
+            color: #68748a;
+            font-size: 13px;
+        }
+
+        .footer-inner {
+            display: flex;
+            justify-content: space-between;
+            gap: 20px;
+            flex-wrap: wrap;
+        }
+
+        /* MOBILE */
+
+        @media (max-width: 760px) {
+
+            .nav-links {
+                display: none;
+            }
+
+            .hero {
+                padding: 90px 0;
+            }
+
+            h1 {
+                letter-spacing: -2px;
+            }
+
+            .grid {
+                grid-template-columns: 1fr;
+            }
+
+            section {
+                padding: 75px 0;
+            }
+
+            .research {
+                padding: 25px;
+            }
+        }
+    </style>
+</head>
+
+<body>
+
+    <!-- NAVIGATION -->
+
+    <div class="container">
+        <nav>
+
+            <a href="#" class="logo">
+                <span class="logo-mark">Q</span>
+                QuantForge AI
+            </a>
+
+            <div class="nav-links">
+                <a href="#problem">Problem</a>
+                <a href="#solution">Solution</a>
+                <a href="#research">Research</a>
+            </div>
+
+        </nav>
+    </div>
+
+
+    <!-- HERO -->
+
+    <header class="hero">
+
+        <div class="container">
+
+            <div class="eyebrow">
+                AI × Algorithmic Research
+            </div>
+
+            <h1>
+                Understand.
+                <span class="gradient">Test.</span>
+                Build Better Algorithms.
+            </h1>
+
+            <p>
+                QuantForge AI is building research infrastructure
+                for developers creating algorithmic trading systems.
+            </p>
+
+            <div class="buttons">
+
+                <a href="#solution"
+                   class="button button-primary">
+                    Explore QuantForge
+                </a>
+
+                <a href="#research"
+                   class="button button-secondary">
+                    Our Research
+                </a>
+
+            </div>
+
+        </div>
+
+    </header>
+
+
+    <!-- PROBLEM -->
+
+    <section id="problem">
+
+        <div class="container">
+
+            <div class="section-label">
+                The Problem
+            </div>
+
+            <h2>
+                Trading systems generate data.
+                Understanding them is harder.
+            </h2>
+
+            <p class="section-intro">
+                Algorithmic trading development produces large amounts
+                of source code, backtest results, trade logs and
+                optimization data. Yet developers often lack the tools
+                to understand why a system behaves the way it does.
+            </p>
+
+        </div>
+
+    </section>
+
+
+    <!-- SOLUTION -->
+
+    <section id="solution">
+
+        <div class="container">
+
+            <div class="section-label">
+                Our Approach
+            </div>
+
+            <h2>
+                AI-assisted research for algorithmic systems.
+            </h2>
+
+            <p class="section-intro">
+                QuantForge AI is designed to help developers analyze,
+                understand and improve algorithmic trading systems.
+            </p>
+
+
+            <div class="grid">
+
+                <div class="card">
+
+                    <div class="card-number">
+                        01
+                    </div>
+
+                    <h3>
+                        Code Analysis
+                    </h3>
+
+                    <p>
+                        Analyze algorithmic source code,
+                        architecture and system logic.
+                    </p>
+
+                </div>
+
+
+                <div class="card">
+
+                    <div class="card-number">
+                        02
+                    </div>
+
+                    <h3>
+                        Behavioral Analysis
+                    </h3>
+
+                    <p>
+                        Investigate how trading systems actually
+                        behave across market conditions.
+                    </p>
+
+                </div>
+
+
+                <div class="card">
+
+                    <div class="card-number">
+                        03
+                    </div>
+
+                    <h3>
+                        Performance Research
+                    </h3>
+
+                    <p>
+                        Analyze backtests, trades, risk,
+                        exits and performance characteristics.
+                    </p>
+
+                </div>
+
+
+                <div class="card">
+
+                    <div class="card-number">
+                        04
+                    </div>
+
+                    <h3>
+                        Risk Analysis
+                    </h3>
+
+                    <p>
+                        Identify risk characteristics,
+                        drawdown behavior and potential weaknesses.
+                    </p>
+
+                </div>
+
+
+                <div class="card">
+
+                    <div class="card-number">
+                        05
+                    </div>
+
+                    <h3>
+                        Experimentation
+                    </h3>
+
+                    <p>
+                        Turn observations into structured
+                        research questions and experiments.
+                    </p>
+
+                </div>
+
+
+                <div class="card">
+
+                    <div class="card-number">
+                        06
+                    </div>
+
+                    <h3>
+                        AI Research Assistant
+                    </h3>
+
+                    <p>
+                        Use AI to accelerate analysis,
+                        documentation and research workflows.
+                    </p>
+
+                </div>
+
+            </div>
+
+        </div>
+
+    </section>
+
+
+    <!-- RESEARCH -->
+
+    <section id="research">
+
+        <div class="container">
+
+            <div class="section-label">
+                Research Case #001
+            </div>
+
+            <h2>
+                Behavioral Fingerprinting
+                of Algorithmic Trading Systems
+            </h2>
+
+            <div class="research">
+
+                <h3>
+                    Our first research direction
+                </h3>
+
+                <p>
+                    QuantForge AI is beginning with research into
+                    how algorithmic trading systems behave in real
+                    backtests. The research combines source-code
+                    analysis, trade data, diagnostic logging,
+                    score decomposition and behavioral patterns.
+                </p>
+
+                <p>
+                    This research is currently in early-stage
+                    development.
+                </p>
+
+            </div>
+
+        </div>
+
+    </section>
+
+
+    <!-- STATUS -->
+
+    <section>
+
+        <div class="container">
+
+            <div class="section-label">
+                Status
+            </div>
+
+            <h2>
+                Early-stage research.
+                Built from real development problems.
+            </h2>
+
+            <p class="section-intro">
+                QuantForge AI is currently being developed as an
+                independent research and development project.
+            </p>
+
+        </div>
+
+    </section>
+
+
+    <!-- FOOTER -->
+
+    <footer>
+
+        <div class="container">
+
+            <div class="footer-inner">
+
+                <div>
+                    © 2026 QuantForge AI
+                </div>
+
+                <div>
+                    AI-powered algorithmic research infrastructure.
+                </div>
+
+            </div>
+
+        </div>
+
+    </footer>
+
+</body>
+</html>

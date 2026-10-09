@@ -1,0 +1,175 @@
+
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Backtest Analyzer | QuantForge AI</title>
+<style>
+:root{color-scheme:dark;--bg:#070b14;--panel:#101827;--line:#263349;--blue:#70aaff;--muted:#aab4c7}
+*{box-sizing:border-box}
+body{margin:0;background:var(--bg);color:#f5f7fb;font-family:Arial,sans-serif;line-height:1.6}
+main{width:min(1100px,92%);margin:auto}
+header{padding:30px 0;border-bottom:1px solid var(--line)}
+a{color:var(--blue);text-decoration:none}
+h1{font-size:clamp(30px,5vw,46px);line-height:1.1;margin:28px 0 12px}
+h2{font-size:20px;margin-top:0}
+p,.muted{color:var(--muted)}
+.panel,.metric{background:var(--panel);border:1px solid var(--line);border-radius:14px;padding:22px}
+.panel{margin:22px 0}
+.metrics{display:grid;grid-template-columns:repeat(3,1fr);gap:14px}
+.metric span{display:block;color:var(--muted);font-size:13px}
+.metric strong{display:block;font-size:25px;overflow-wrap:anywhere;margin-top:8px}
+input,button{font:inherit}
+input[type=file]{display:block;width:100%;margin:18px 0;color:var(--muted)}
+button{background:var(--blue);color:#07101e;border:0;border-radius:8px;padding:11px 16px;font-weight:bold;cursor:pointer;margin:4px 6px 4px 0}
+button.secondary{background:transparent;border:1px solid var(--line);color:#fff}
+.status{padding:12px;background:#0a1220;border-radius:8px;color:var(--muted);overflow-wrap:anywhere}
+.good{color:#65ddb0!important}.bad{color:#ff9292!important}
+table{width:100%;border-collapse:collapse;font-size:14px}
+th,td{text-align:left;padding:10px;border-bottom:1px solid var(--line)}
+.table-wrap{overflow-x:auto}
+footer{padding:30px 0;color:var(--muted);font-size:13px}
+@media(max-width:700px){.metrics{grid-template-columns:repeat(2,minmax(0,1fr))}.metric{padding:14px}.metric strong{font-size:20px}}
+</style>
+</head>
+<body>
+<header><main>
+<a href="index.html">← QuantForge AI</a>
+<h1>Backtest Analyzer <span style="color:#70aaff">v0.1</span></h1>
+<p>Explore trade performance, profitability and drawdown from your backtest CSV.</p>
+</main></header>
+<main>
+<section class="panel">
+<h2>1. Import trade data</h2>
+<p>Upload a CSV containing closed trades. Required column: <b>profit</b>. Optional columns: <b>commission</b> and <b>swap</b>. Each row should represent one closed trade.</p>
+<input id="file" type="file" accept=".csv,text/csv">
+<button id="demo">Load demo data</button>
+<button id="reset" class="secondary">Reset</button>
+<div id="status" class="status">No data loaded yet.</div>
+<p class="muted">This prototype processes the file locally in your browser. It does not upload the CSV to a server.</p>
+</section>
+
+<section>
+<h2>2. Performance overview</h2>
+<div class="metrics">
+<div class="metric"><span>Closed trades</span><strong id="count">—</strong></div>
+<div class="metric"><span>Win rate</span><strong id="win">—</strong></div>
+<div class="metric"><span>Net profit</span><strong id="net">—</strong></div>
+<div class="metric"><span>Profit factor</span><strong id="pf">—</strong></div>
+<div class="metric"><span>Max drawdown</span><strong id="dd">—</strong></div>
+<div class="metric"><span>Avg. net / trade</span><strong id="avg">—</strong></div>
+</div>
+</section>
+
+<section class="panel">
+<h2>3. Initial observations</h2>
+<div id="findings" class="muted">Load a valid CSV to generate observations.</div>
+</section>
+
+<section class="panel">
+<h2>4. Trade preview</h2>
+<p class="muted">Showing up to the first 10 parsed rows.</p>
+<div class="table-wrap">
+<table>
+<thead><tr><th>#</th><th>Profit</th><th>Commission</th><th>Swap</th><th>Net P/L</th></tr></thead>
+<tbody id="rows"><tr><td colspan="5">No data</td></tr></tbody>
+</table>
+</div>
+</section>
+<footer>© 2026 QuantForge AI · Research prototype. Not financial advice.</footer>
+</main>
+<script>
+const $=id=>document.getElementById(id);
+let trades=[];
+
+function number(value){
+  if(value===undefined||value===null)return 0;
+  let s=String(value).trim().replace(/["$€£\s]/g,"");
+  if(!s)return 0;
+  if(s.includes(",")&&!s.includes("."))s=s.replace(",",".");
+  else s=s.replace(/,/g,"");
+  const n=Number(s);
+  return Number.isFinite(n)?n:NaN;
+}
+function parseCSV(text){
+  const lines=text.replace(/^\uFEFF/,"").split(/\r?\n/).filter(x=>x.trim());
+  if(lines.length<2)throw Error("CSV must contain a header and at least one trade row.");
+  const first=lines[0];
+  const delimiter=(first.match(/;/g)||[]).length>(first.match(/,/g)||[]).length?";":",";
+  function split(line){
+    const out=[];let cell="",quoted=false;
+    for(let i=0;i<line.length;i++){
+      const c=line[i];
+      if(c==='"'&&line[i+1]==='"'&&quoted){cell+='"';i++}
+      else if(c==='"')quoted=!quoted;
+      else if(c===delimiter&&!quoted){out.push(cell.trim());cell=""}
+      else cell+=c;
+    }
+    out.push(cell.trim());return out;
+  }
+  const headers=split(lines[0]).map(x=>x.toLowerCase().replace(/^\uFEFF/,"").trim().replace(/[\s_-]+/g,""));
+  const find=names=>headers.findIndex(h=>names.includes(h));
+  const pi=find(["profit","netprofit","pl","profitloss","result"]);
+  const ci=find(["commission","commissions"]);
+  const si=find(["swap","swaps"]);
+  if(pi<0)throw Error("Could not find a profit column. Rename the column to profit and try again.");
+  const result=[];
+  for(let i=1;i<lines.length;i++){
+    const cells=split(lines[i]);
+    const p=number(cells[pi]);
+    const c=ci<0?0:number(cells[ci]);
+    const s=si<0?0:number(cells[si]);
+    if(!Number.isFinite(p)||!Number.isFinite(c)||!Number.isFinite(s))
+      throw Error("Invalid numeric value on CSV line "+(i+1)+". Check the profit, commission and swap columns.");
+    result.push({profit:p,commission:c,swap:s,net:p+c+s});
+  }
+  if(!result.length)throw Error("No trade rows found.");
+  return result;
+}
+function money(n){return n.toLocaleString("en-US",{minimumFractionDigits:2,maximumFractionDigits:2})}
+function show(data,label){
+  trades=data;
+  const wins=data.filter(t=>t.net>0).length;
+  const losses=data.filter(t=>t.net<0).length;
+  const net=data.reduce((s,t)=>s+t.net,0);
+  const grossWin=data.reduce((s,t)=>s+Math.max(0,t.net),0);
+  const grossLoss=Math.abs(data.reduce((s,t)=>s+Math.min(0,t.net),0));
+  let equity=0,peak=0,maxDD=0;
+  for(const t of data){equity+=t.net;peak=Math.max(peak,equity);maxDD=Math.max(maxDD,peak-equity)}
+  $("count").textContent=data.length;
+  $("win").textContent=(wins/data.length*100).toFixed(2)+"%";
+  $("net").textContent=money(net);
+  $("net").className=net>=0?"good":"bad";
+  $("pf").textContent=grossLoss===0?(grossWin>0?"∞":"N/A"):(grossWin/grossLoss).toFixed(2);
+  $("dd").textContent=money(maxDD);
+  $("avg").textContent=money(net/data.length);
+  $("status").textContent=label+" · "+data.length+" trades parsed successfully.";
+  $("findings").innerHTML="";
+  const notes=[
+    "Winning trades: "+wins+" ("+(wins/data.length*100).toFixed(1)+"%). Losing trades: "+losses+".",
+    "Gross profit: "+money(grossWin)+". Gross loss: "+money(grossLoss)+".",
+    "Net result: "+(net>=0?"positive":"negative")+" by "+money(Math.abs(net))+".",
+    "Maximum peak-to-trough drawdown in the supplied trade order: "+money(maxDD)+"."
+  ];
+  if(grossLoss===0&&grossWin>0)notes.push("No losing trades were found in this file; profit factor is shown as infinity, not proof of future profitability.");
+  $("findings").innerHTML=notes.map(n=>"<p>"+n+"</p>").join("");
+  $("rows").innerHTML=data.slice(0,10).map((t,i)=>`<tr><td>${i+1}</td><td>${money(t.profit)}</td><td>${money(t.commission)}</td><td>${money(t.swap)}</td><td class="${t.net>=0?"good":"bad"}">${money(t.net)}</td></tr>`).join("");
+}
+$("file").addEventListener("change",async e=>{
+  const file=e.target.files[0];if(!file)return;
+  try{show(parseCSV(await file.text()),file.name)}
+  catch(err){$("status").textContent="Could not analyze file: "+err.message}
+});
+$("demo").addEventListener("click",()=>{
+  show([{profit:120,commission:-4,swap:0,net:116},{profit:-60,commission:-4,swap:-1,net:-65},{profit:85,commission:-4,swap:0,net:81},{profit:-40,commission:-4,swap:0,net:-44},{profit:35,commission:-4,swap:1,net:32}],"Demo dataset (illustrative)");
+});
+$("reset").addEventListener("click",()=>{
+  trades=[];$("file").value="";$("status").textContent="No data loaded yet.";
+  ["count","win","net","pf","dd","avg"].forEach(id=>$(id).textContent="—");
+  $("findings").textContent="Load a valid CSV to generate observations.";
+  $("rows").innerHTML="<tr><td colspan='5'>No data</td></tr>";
+});
+</script>
+</body>
+</html>

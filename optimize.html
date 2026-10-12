@@ -1,0 +1,86 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8"><meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Optimization Check | QuantForge AI</title>
+<link rel="stylesheet" href="assets/tools.css">
+</head>
+<body>
+<header class="top"><main>
+  <nav class="topnav" aria-label="QuantForge tools">
+    <a href="index.html">← QuantForge AI</a>
+    <a href="analyze.html">Backtest Analyzer</a>
+    <a href="optimize.html" aria-current="page">Optimization Check</a>
+  </nav>
+  <h1>Optimization Check <span style="color:#70aaff">v0.1</span></h1>
+  <p>Compare optimization passes and look for signs of overfitting: isolated peaks, parameter sensitivity, thin trade counts and back-to-forward decay. Files are processed in your browser and never uploaded.</p>
+</main></header>
+<main>
+<section class="panel">
+  <h2>1. Import optimization results</h2>
+  <p>Export the Optimization Results tab from MT5 as CSV (or copy it to CSV). Recognised columns: Pass, Result, Profit, Profit Factor, Recovery Factor, Sharpe Ratio, Custom, Equity DD %, Trades, Forward Result, Back Result. Every other numeric column with few distinct values is treated as an input parameter.</p>
+  <input id="file" type="file" accept=".csv,.txt,text/csv,text/plain" aria-label="Choose an optimization CSV">
+  <button id="demo">Load demo</button>
+  <button id="report" class="secondary" disabled>Download report (.md)</button>
+  <button id="reset" class="secondary">Reset</button>
+  <div id="status" class="status" role="status">No data loaded yet.</div>
+</section>
+
+<section id="optPanel" class="panel hidden">
+  <h2>2. Ranking settings</h2>
+  <label><span>Rank passes by</span><select id="score"></select></label>
+  <label><span>Ignore passes with fewer trades than</span><input id="minTrades" type="number" min="0" step="10" value="0"></label>
+  <button id="rerun">Re-run checks</button>
+</section>
+
+<section id="overview" class="hidden">
+  <h2>3. Overview</h2>
+  <div id="metrics" class="metrics"></div>
+</section>
+
+<section id="findPanel" class="panel hidden">
+  <h2>4. Overfitting indicators</h2>
+  <p class="note">These are indicators, not proof. The only real confirmation is performance on data the optimizer never saw.</p>
+  <div id="flags"></div>
+</section>
+
+<section id="histPanel" class="panel hidden">
+  <h2>5. Score distribution</h2>
+  <canvas id="hist" class="chart" style="height:240px" role="img" aria-label="Histogram of pass scores"></canvas>
+  <p class="legend note"><span style="color:#ffd37a">┃ Best pass</span> &nbsp; <span style="color:#65ddb0">┃ Median of all passes</span></p>
+</section>
+
+<section id="tablePanel" class="panel hidden"><h2>6. Details</h2><div id="tables"></div></section>
+<footer>© 2026 QuantForge AI · Research prototype. Not financial advice.</footer>
+</main>
+<script src="assets/qf.js"></script>
+<script>
+const $=id=>document.getElementById(id);
+let ctx=null,res=null,label="";
+function run(){
+  try{
+    res=QF.analyzeOptimization(ctx,{scoreJ:+$('score').value,minTrades:+$('minTrades').value||0});
+    ['overview','findPanel','histPanel','tablePanel'].forEach(i=>$(i).classList.remove('hidden'));
+    QF.ui.metrics($('metrics'),res.metrics);QF.ui.flags($('flags'),res.flags);
+    $('tables').innerHTML=res.tables.map(QF.ui.tableHTML).join('');
+    QF.draw.hist($('hist'),res.scores,[{value:res.bestScore,color:'#ffd37a',label:'Best'},{value:res.medianScore,color:'#65ddb0',label:'Median'}]);
+    $('report').disabled=false;$('status').className='status';$('status').textContent=label+' · '+ctx.N+' passes · '+ctx.params.length+' parameter'+(ctx.params.length===1?'':'s')+' detected ('+ctx.params.map(p=>p.name).join(', ')+').';
+  }catch(e){$('status').className='status error';$('status').textContent='Could not analyze: '+e.message}
+}
+function load(text,name){
+  try{
+    const p=QF.parseCSV(text);ctx=QF.toOptimization(p);label=name;
+    if(!ctx)throw new Error('No score column found. Expected at least one of Result, Profit, Custom or Profit Factor. Detected headers: '+p.headers.join(' | '));
+    $('optPanel').classList.remove('hidden');
+    $('score').innerHTML=ctx.scoreOptions.map(o=>`<option value="${o.j}">${QF.esc(o.name)}</option>`).join('');
+    run();
+  }catch(e){$('status').className='status error';$('status').textContent='Could not analyze file: '+e.message}
+}
+$('file').addEventListener('change',async e=>{const f=e.target.files[0];if(!f)return;try{load(await QF.readFile(f),f.name)}catch(err){$('status').className='status error';$('status').textContent='Could not read file: '+err.message}});
+$('demo').addEventListener('click',()=>load(QF.demo.optimization(),'Demo optimization (synthetic, 12×12 grid)'));
+$('rerun').addEventListener('click',run);
+$('report').addEventListener('click',()=>{if(res)QF.ui.download('quantforge-optimization-report.md',QF.report({title:'Optimization overfitting check',source:label+' · ranked by '+res.scoreName,metrics:res.metrics,flags:res.flags,tables:res.tables}))});
+$('reset').addEventListener('click',()=>{ctx=null;res=null;$('file').value='';$('status').className='status';$('status').textContent='No data loaded yet.';['optPanel','overview','findPanel','histPanel','tablePanel'].forEach(i=>$(i).classList.add('hidden'));$('report').disabled=true});
+window.addEventListener('resize',()=>{if(res)QF.draw.hist($('hist'),res.scores,[{value:res.bestScore,color:'#ffd37a',label:'Best'},{value:res.medianScore,color:'#65ddb0',label:'Median'}])});
+</script>
+</body></html>

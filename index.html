@@ -229,6 +229,20 @@
             );
         }
 
+        a.card {
+            display: block;
+        }
+
+        a.card:hover {
+            border-color: rgba(101,168,255,0.45);
+        }
+
+        a.card:focus-visible,
+        .button:focus-visible {
+            outline: 2px solid #65a8ff;
+            outline-offset: 3px;
+        }
+
         .research h3 {
             font-size: 27px;
         }
@@ -301,6 +315,7 @@
             <div class="nav-links">
                 <a href="#problem">Problem</a>
                 <a href="#solution">Solution</a>
+                <a href="#tools">Tools</a>
                 <a href="#research">Research</a>
             </div>
 
@@ -330,20 +345,21 @@
             </h1>
 
             <p>
-                QuantForge AI is building research infrastructure
-                for developers creating algorithmic trading systems.
+                QuantForge AI is building research tools for developers and
+                traders who build MetaTrader 5 Expert Advisors: audit backtests,
+                find weaknesses, and test whether a result is real.
             </p>
 
             <div class="buttons">
 
-                <a href="#solution"
+                <a href="analyze.html"
                    class="button button-primary">
-                    Explore QuantForge
+                    Analyze a backtest
                 </a>
 
-                <a href="#research"
+                <a href="#tools"
                    class="button button-secondary">
-                    Our Research
+                    All tools
                 </a>
 
             </div>
@@ -510,6 +526,87 @@
                 </div>
 
             </div>
+
+        </div>
+
+    </section>
+
+
+    <!-- TOOLS -->
+
+    <section id="tools">
+
+        <div class="container">
+
+            <div class="section-label">
+                Tools
+            </div>
+
+            <h2>
+                Start with your own backtest data.
+            </h2>
+
+            <p class="section-intro">
+                Both tools run entirely in your browser. Your files are
+                never uploaded.
+            </p>
+
+            <div class="grid">
+
+                <a class="card" href="analyze.html">
+                    <h3>Backtest Analyzer</h3>
+                    <p>
+                        Import a closed-trade or deals CSV, or a Strategy Tester
+                        graph export. Get outlier dependence, tail risk, cost drag,
+                        floating drawdown, a behaviour breakdown and a downloadable report.
+                    </p>
+                </a>
+
+                <a class="card" href="optimize.html">
+                    <h3>Optimization Check</h3>
+                    <p>
+                        Import MT5 optimization results. Detect isolated peaks,
+                        parameter sensitivity, thin trade counts and back-to-forward
+                        decay before trusting the best pass.
+                    </p>
+                </a>
+
+                <div class="card">
+                    <h3>Next on the roadmap</h3>
+                    <p>
+                        EA log reader, MQL5 code review, test-plan generator and
+                        multi-run comparison.
+                    </p>
+                </div>
+
+            </div>
+
+        </div>
+
+    </section>
+
+
+    <!-- BOUNDARIES -->
+
+    <section id="boundaries">
+
+        <div class="container">
+
+            <div class="section-label">
+                Boundaries
+            </div>
+
+            <h2>
+                No signals. No profit promises.
+            </h2>
+
+            <p class="section-intro">
+                QuantForge AI does not sell trading signals, manage money
+                or guarantee results. It helps you understand the system you
+                already have. Every metric describes the data you provide
+                and does not predict future performance. Nothing here is
+                financial advice.
+            </p>
 
         </div>
 

@@ -1,0 +1,86 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8"><meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Test Plan Generator | QuantForge AI</title>
+<link rel="stylesheet" href="assets/tools.css">
+<style>
+.form{display:grid;grid-template-columns:repeat(3,minmax(0,1fr));gap:6px 18px;margin-top:14px}
+.form label{margin:6px 0}.form input[type=text],.form input[type=date],.form input[type=number],.form select{width:100%;min-width:0}
+input[type=text],input[type=date]{background:var(--panel2);color:#fff;border:1px solid var(--line);border-radius:8px;padding:8px 10px;font:inherit}
+fieldset{border:1px solid var(--line);border-radius:10px;margin:16px 0 4px;padding:10px 14px}
+legend{color:var(--muted);font-size:14px;padding:0 6px}
+.checks{display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:2px 18px}
+.checks label{display:flex;gap:8px;align-items:flex-start;margin:4px 0;color:#d9dfeb}
+.checks input{margin-top:5px}
+td:last-child{white-space:normal}td{white-space:normal;vertical-align:top}
+@media(max-width:700px){.form,.checks{grid-template-columns:1fr}}
+</style>
+</head>
+<body>
+<header class="top"><main>
+  <nav class="topnav" aria-label="QuantForge tools">
+    <a href="index.html">← QuantForge AI</a>
+    <a href="analyze.html">Backtest Analyzer</a>
+    <a href="optimize.html">Optimization Check</a>
+    <a href="log.html">Log Reader</a>
+    <a href="review.html">Code Review</a>
+    <a href="testplan.html" aria-current="page">Test Plan</a>
+  </nav>
+  <h1>Test Plan Generator <span style="color:#70aaff">v0.1</span></h1>
+  <p>Turn what you know about an EA into a concrete test plan: data split with real dates, walk-forward windows, robustness matrix, acceptance criteria and an ordered run sheet. Runs in your browser; nothing is uploaded.</p>
+</main></header>
+<main>
+<section class="panel">
+  <h2>1. Describe the EA and the test</h2>
+  <div class="form">
+    <label><span>EA name</span><input id="ea" type="text" value="MyEA"></label>
+    <label><span>Strategy type</span><select id="type"><option value="trend">Trend following</option><option value="meanrev">Mean reversion</option><option value="grid">Grid / martingale / averaging</option><option value="scalper">Scalper</option><option value="breakout">Breakout</option><option value="other">Other</option></select></label>
+    <label><span>Symbols (comma separated; first = primary)</span><input id="symbols" type="text" value="EURUSD, GBPUSD, XAUUSD"></label>
+    <label><span>Timeframes (comma separated; first = primary)</span><input id="tfs" type="text" value="M15, H1"></label>
+    <label><span>History start</span><input id="start" type="date" value="2021-01-01"></label>
+    <label><span>History end</span><input id="end" type="date" value="2026-09-30"></label>
+    <label><span>Expected trades per year (primary symbol)</span><input id="tpy" type="number" min="1" value="120"></label>
+    <label><span>Optimized parameters</span><input id="params" type="number" min="0" max="20" value="3"></label>
+    <label><span>Steps per parameter</span><input id="steps" type="number" min="2" max="100" value="10"></label>
+    <label><span>Walk-forward windows</span><input id="windows" type="number" min="2" max="12" value="5"></label>
+    <label><span>IS : OOS ratio</span><input id="ratio" type="number" min="1" max="8" step="0.5" value="3"></label>
+    <label><span>Final holdout (% of history)</span><input id="hold" type="number" min="10" max="40" value="20"></label>
+    <label><span>Deposit and currency (optional)</span><input id="deposit" type="text" placeholder="e.g. 3000 USD"></label>
+    <label><span>Max equity drawdown you accept (%)</span><input id="maxdd" type="number" min="1" max="95" value="25"></label>
+    <label><span>Minimum total OOS trades</span><input id="mintrades" type="number" min="30" value="200"></label>
+    <label><span>Minimum stressed profit factor</span><input id="minpf" type="number" min="1" step="0.05" value="1.2"></label>
+  </div>
+  <fieldset><legend>Known concerns (from the other tools)</legend>
+    <div class="checks" id="concerns"></div>
+  </fieldset>
+  <button id="build">Build test plan</button>
+  <button id="report" class="secondary" disabled>Download plan (.md)</button>
+  <button id="reset" class="secondary">Reset</button>
+  <div id="status" class="status" role="status">No plan built yet.</div>
+  <p class="muted note">The thresholds are starting points, not rules. Adjust them to your own risk limits before you run the tests, and do not change them afterwards.</p>
+</section>
+
+<section id="overview" class="hidden"><h2>2. Plan overview</h2><div id="metrics" class="metrics"></div></section>
+<section id="findPanel" class="panel hidden"><h2>3. Plan quality</h2><div id="flags"></div></section>
+<section id="tablePanel" class="panel hidden"><h2>4. The plan</h2><div id="tables"></div></section>
+<footer>© 2026 QuantForge AI · Research prototype. Not financial advice.</footer>
+</main>
+<script src="assets/qf.js"></script>
+<script>
+const $=id=>document.getElementById(id);let res=null;
+$('concerns').innerHTML=Object.entries(QF.concerns).map(([k,v])=>`<label><input type="checkbox" value="${k}"> <span>${QF.esc(v[0])}</span></label>`).join('');
+const list=v=>v.split(',').map(x=>x.trim()).filter(Boolean);
+function build(){
+  try{
+    res=QF.buildTestPlan({ea:$('ea').value.trim()||'EA',type:$('type').value,symbols:list($('symbols').value),tfs:list($('tfs').value),start:$('start').value,end:$('end').value,tradesPerYear:+$('tpy').value,params:+$('params').value,steps:+$('steps').value,windows:+$('windows').value,ratio:+$('ratio').value,holdoutPct:+$('hold').value,deposit:$('deposit').value.trim(),maxDD:+$('maxdd').value,minTrades:+$('mintrades').value,minPF:+$('minpf').value,concerns:[...document.querySelectorAll('#concerns input:checked')].map(x=>x.value)});
+    ['overview','findPanel','tablePanel'].forEach(i=>$(i).classList.remove('hidden'));
+    QF.ui.metrics($('metrics'),res.metrics);QF.ui.flags($('flags'),res.flags);$('tables').innerHTML=res.tables.map(QF.ui.tableHTML).join('');
+    $('report').disabled=false;$('status').className='status';$('status').textContent='Plan built for '+res.name+' \u00b7 '+res.tables.length+' sections.';
+  }catch(e){$('status').className='status error';$('status').textContent='Could not build plan: '+e.message}
+}
+$('build').addEventListener('click',build);
+$('report').addEventListener('click',()=>{if(res)QF.ui.download('quantforge-test-plan.md',QF.report({title:'Test plan: '+res.name,source:'Generated by QuantForge AI Test Plan',metrics:res.metrics,flags:res.flags,tables:res.tables}))});
+$('reset').addEventListener('click',()=>{res=null;document.querySelectorAll('#concerns input').forEach(x=>x.checked=false);$('status').className='status';$('status').textContent='No plan built yet.';['overview','findPanel','tablePanel'].forEach(i=>$(i).classList.add('hidden'));$('report').disabled=true});
+</script>
+</body></html>

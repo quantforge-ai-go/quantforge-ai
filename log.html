@@ -1,0 +1,63 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8"><meta name="viewport" content="width=device-width, initial-scale=1">
+<title>EA Log Reader | QuantForge AI</title>
+<link rel="stylesheet" href="assets/tools.css">
+</head>
+<body>
+<header class="top"><main>
+  <nav class="topnav" aria-label="QuantForge tools">
+    <a href="index.html">← QuantForge AI</a>
+    <a href="analyze.html">Backtest Analyzer</a>
+    <a href="optimize.html">Optimization Check</a>
+    <a href="log.html" aria-current="page">Log Reader</a>
+    <a href="review.html">Code Review</a>
+    <a href="testplan.html">Test Plan</a>
+  </nav>
+  <h1>EA Log Reader <span style="color:#70aaff">v0.1</span></h1>
+  <p>Find what an Expert Advisor is really struggling with: failed orders, retry storms, runtime errors, stop-outs, restarts and log flooding. Files are processed in your browser and never uploaded.</p>
+</main></header>
+<main>
+<section class="panel">
+  <h2>1. Import a log</h2>
+  <p>Accepted: a terminal or tester log file (<code>MQL5/Logs/YYYYMMDD.log</code>, tester agent logs) or text copied from the Experts / Journal tab and saved as .txt or .log. Lines with and without timestamps are handled.</p>
+  <input id="file" type="file" accept=".log,.txt,text/plain" aria-label="Choose a log file">
+  <button id="demo">Load demo log</button>
+  <button id="report" class="secondary" disabled>Download report (.md)</button>
+  <button id="reset" class="secondary">Reset</button>
+  <div id="status" class="status" role="status">No log loaded yet.</div>
+  <p class="muted note">Demo data is synthetic. Classification is pattern-based and can miss wording that differs by broker or MT5 build.</p>
+</section>
+
+<section id="overview" class="hidden">
+  <h2>2. Overview</h2>
+  <div id="metrics" class="metrics"></div>
+</section>
+
+<section id="findPanel" class="panel hidden">
+  <h2>3. Findings</h2>
+  <div id="flags"></div>
+</section>
+
+<section id="tablePanel" class="panel hidden"><h2>4. Details</h2><div id="tables"></div></section>
+<footer>© 2026 QuantForge AI · Research prototype. Not financial advice.</footer>
+</main>
+<script src="assets/qf.js"></script>
+<script>
+const $=id=>document.getElementById(id);let res=null,label="";
+function load(text,name){
+  try{
+    res=QF.analyzeLog(QF.parseLog(text));label=name;
+    ['overview','findPanel','tablePanel'].forEach(i=>$(i).classList.remove('hidden'));
+    QF.ui.metrics($('metrics'),res.metrics);QF.ui.flags($('flags'),res.flags);
+    $('tables').innerHTML=res.tables.map(QF.ui.tableHTML).join('');
+    $('report').disabled=false;$('status').className='status';$('status').textContent=name+' \u00b7 '+res.metrics[0].value+' lines analysed.';
+  }catch(e){$('status').className='status error';$('status').textContent='Could not analyze file: '+e.message}
+}
+$('file').addEventListener('change',async e=>{const f=e.target.files[0];if(!f)return;try{load(await QF.readFile(f),f.name)}catch(err){$('status').className='status error';$('status').textContent='Could not read file: '+err.message}});
+$('demo').addEventListener('click',()=>load(QF.demo.log(),'Demo EA log (synthetic)'));
+$('report').addEventListener('click',()=>{if(res)QF.ui.download('quantforge-log-report.md',QF.report({title:'EA log analysis',source:label,metrics:res.metrics,flags:res.flags,tables:res.tables}))});
+$('reset').addEventListener('click',()=>{res=null;$('file').value='';$('status').className='status';$('status').textContent='No log loaded yet.';['overview','findPanel','tablePanel'].forEach(i=>$(i).classList.add('hidden'));$('report').disabled=true});
+</script>
+</body></html>

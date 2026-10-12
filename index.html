@@ -233,6 +233,10 @@
             display: block;
         }
 
+        .grid.grid-2 {
+            grid-template-columns: repeat(2, 1fr);
+        }
+
         a.card:hover {
             border-color: rgba(101,168,255,0.45);
         }
@@ -285,7 +289,8 @@
                 letter-spacing: -2px;
             }
 
-            .grid {
+            .grid,
+            .grid.grid-2 {
                 grid-template-columns: 1fr;
             }
 
@@ -547,7 +552,7 @@
             </h2>
 
             <p class="section-intro">
-                Both tools run entirely in your browser. Your files are
+                All tools run entirely in your browser. Your files are
                 never uploaded.
             </p>
 
@@ -571,13 +576,32 @@
                     </p>
                 </a>
 
-                <div class="card">
-                    <h3>Next on the roadmap</h3>
+                <a class="card" href="log.html">
+                    <h3>EA Log Reader</h3>
                     <p>
-                        EA log reader, MQL5 code review, test-plan generator and
-                        multi-run comparison.
+                        Import an Experts/Journal or terminal log. Find failed orders,
+                        retry storms, runtime errors, stop-outs, EA restarts and log
+                        flooding, each with what to check in the code.
                     </p>
-                </div>
+                </a>
+
+                <a class="card" href="review.html">
+                    <h3>MQL5 Code Review</h3>
+                    <p>
+                        Paste an Expert Advisor and get a risk-control checklist:
+                        stop loss, lot and price normalisation, order-result handling,
+                        retry loops, exposure caps and a drawdown kill-switch.
+                    </p>
+                </a>
+
+                <a class="card" href="testplan.html">
+                    <h3>Test Plan Generator</h3>
+                    <p>
+                        Turn an EA's profile and known problems into a test plan:
+                        walk-forward windows with real dates, robustness matrix,
+                        acceptance criteria and an ordered run sheet.
+                    </p>
+                </a>
 
             </div>
 

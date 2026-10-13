@@ -44,3 +44,14 @@ th,td{text-align:left;padding:9px 10px;border-bottom:1px solid var(--line);white
 footer{padding:30px 0;color:var(--muted);font-size:13px}
 @media(max-width:700px){.metrics{grid-template-columns:repeat(2,minmax(0,1fr))}.metric{padding:14px}.metric strong{font-size:18px}}
 @media(prefers-reduced-motion:reduce){*{scroll-behavior:auto!important}}
+
+.doc h1{font-size:30px;margin:6px 0 4px}.doc h2{font-size:20px;margin:30px 0 8px;padding-top:6px;border-top:1px solid var(--line)}
+.doc p,.doc li{color:#d9dfeb}.doc ul{padding-left:22px}.doc li{margin:6px 0}
+.doc table{margin-bottom:10px}.doc td{white-space:normal}
+.items td{white-space:normal}
+@media print{
+ body{background:#fff;color:#000}.noprint{display:none!important}main{width:100%}
+ .panel,.metric{background:#fff;border:0;padding:0}
+ .doc p,.doc li,.doc td,.doc th,.muted{color:#000}.doc h2{border-color:#999;break-after:avoid}
+ th,td{border-color:#bbb}table,li{break-inside:avoid}a{color:#000}
+}

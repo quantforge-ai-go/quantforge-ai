@@ -14,6 +14,8 @@
     <a href="log.html">Log Reader</a>
     <a href="review.html">Code Review</a>
     <a href="testplan.html">Test Plan</a>
+    <a href="compare.html">Compare</a>
+    <a href="report.html">Research Report</a>
   </nav>
   <h1>Optimization Check <span style="color:#70aaff">v0.1</span></h1>
   <p>Compare optimization passes and look for signs of overfitting: isolated peaks, parameter sensitivity, thin trade counts and back-to-forward decay. Files are processed in your browser and never uploaded.</p>
@@ -25,6 +27,7 @@
   <input id="file" type="file" accept=".csv,.txt,text/csv,text/plain" aria-label="Choose an optimization CSV">
   <button id="demo">Load demo</button>
   <button id="report" class="secondary" disabled>Download report (.md)</button>
+  <button id="addrep" class="secondary" disabled>Add to research report</button>
   <button id="reset" class="secondary">Reset</button>
   <div id="status" class="status" role="status">No data loaded yet.</div>
 </section>
@@ -53,7 +56,17 @@
   <p class="legend note"><span style="color:#ffd37a">┃ Best pass</span> &nbsp; <span style="color:#65ddb0">┃ Median of all passes</span></p>
 </section>
 
-<section id="tablePanel" class="panel hidden"><h2>6. Details</h2><div id="tables"></div></section>
+<section id="heatPanel" class="panel hidden">
+  <h2>6. Parameter heatmap</h2>
+  <p class="note">Score for each pair of values of two parameters. A robust setting sits in a broad bright region; a lone bright cell with dark neighbours is a spike. Needs at least two optimized parameters.</p>
+  <label><span>X axis</span><select id="hx"></select></label>
+  <label><span>Y axis</span><select id="hy"></select></label>
+  <label><span>Other parameters</span><select id="hagg"><option value="best">Best score over the others</option><option value="median">Median over the others</option></select></label>
+  <canvas id="heat" class="chart" role="img" aria-label="Heatmap of score by two parameters" style="height:300px"></canvas>
+  <p id="heatNote" class="legend note"></p>
+</section>
+
+<section id="tablePanel" class="panel hidden"><h2>7. Details</h2><div id="tables"></div></section>
 <footer>© 2026 QuantForge AI · Research prototype. Not financial advice.</footer>
 </main>
 <script src="assets/qf.js"></script>
@@ -67,14 +80,17 @@ function run(){
     QF.ui.metrics($('metrics'),res.metrics);QF.ui.flags($('flags'),res.flags);
     $('tables').innerHTML=res.tables.map(QF.ui.tableHTML).join('');
     QF.draw.hist($('hist'),res.scores,[{value:res.bestScore,color:'#ffd37a',label:'Best'},{value:res.medianScore,color:'#65ddb0',label:'Median'}]);
-    $('report').disabled=false;$('status').className='status';$('status').textContent=label+' · '+ctx.N+' passes · '+ctx.params.length+' parameter'+(ctx.params.length===1?'':'s')+' detected ('+ctx.params.map(p=>p.name).join(', ')+').';
+    drawHeat();
+    $('report').disabled=false;$('addrep').disabled=false;$('status').className='status';$('status').textContent=label+' · '+ctx.N+' passes · '+ctx.params.length+' parameter'+(ctx.params.length===1?'':'s')+' detected ('+ctx.params.map(p=>p.name).join(', ')+').';
   }catch(e){$('status').className='status error';$('status').textContent='Could not analyze: '+e.message}
 }
 function load(text,name){
   try{
-    const p=QF.parseCSV(text);ctx=QF.toOptimization(p);label=name;
-    if(!ctx)throw new Error('No score column found. Expected at least one of Result, Profit, Custom or Profit Factor. Detected headers: '+p.headers.join(' | '));
-    $('optPanel').classList.remove('hidden');
+    const p=QF.parseCSV(text);
+    if(QF.looksLikeGraph(p))throw new Error('This is a Strategy Tester graph export (DATE, BALANCE, EQUITY), not optimization results. Open it in the Backtest Analyzer instead.');
+    ctx=QF.toOptimization(p);label=name;
+    if(!ctx)throw new Error('This does not look like MT5 optimization results: no Pass column and no Result / Profit / Custom / Profit Factor column. Detected headers: '+p.headers.join(' | '));
+    $('optPanel').classList.remove('hidden');setupHeat();
     $('score').innerHTML=ctx.scoreOptions.map(o=>`<option value="${o.j}">${QF.esc(o.name)}</option>`).join('');
     run();
   }catch(e){$('status').className='status error';$('status').textContent='Could not analyze file: '+e.message}
@@ -83,7 +99,18 @@ $('file').addEventListener('change',async e=>{const f=e.target.files[0];if(!f)re
 $('demo').addEventListener('click',()=>load(QF.demo.optimization(),'Demo optimization (synthetic, 12×12 grid)'));
 $('rerun').addEventListener('click',run);
 $('report').addEventListener('click',()=>{if(res)QF.ui.download('quantforge-optimization-report.md',QF.report({title:'Optimization overfitting check',source:label+' · ranked by '+res.scoreName,metrics:res.metrics,flags:res.flags,tables:res.tables}))});
-$('reset').addEventListener('click',()=>{ctx=null;res=null;$('file').value='';$('status').className='status';$('status').textContent='No data loaded yet.';['optPanel','overview','findPanel','histPanel','tablePanel'].forEach(i=>$(i).classList.add('hidden'));$('report').disabled=true});
-window.addEventListener('resize',()=>{if(res)QF.draw.hist($('hist'),res.scores,[{value:res.bestScore,color:'#ffd37a',label:'Best'},{value:res.medianScore,color:'#65ddb0',label:'Median'}])});
+$('reset').addEventListener('click',()=>{ctx=null;res=null;$('file').value='';$('status').className='status';$('status').textContent='No data loaded yet.';['optPanel','overview','findPanel','histPanel','heatPanel','tablePanel'].forEach(i=>$(i).classList.add('hidden'));$('report').disabled=true;$('addrep').disabled=true});
+window.addEventListener('resize',()=>{if(res)drawHeat();if(res)QF.draw.hist($('hist'),res.scores,[{value:res.bestScore,color:'#ffd37a',label:'Best'},{value:res.medianScore,color:'#65ddb0',label:'Median'}])});
+$('addrep').addEventListener('click',()=>{if(!res)return;const r=QF.store.add('optimization',label,res,label);$('status').className=r.ok?'status':'status error';$('status').innerHTML=r.ok?'Added to the research report ('+r.count+' saved). <a href="report.html">Open the report</a>':QF.esc(r.error)});
+function setupHeat(){const P=ctx.params;$('heatPanel').classList.toggle('hidden',P.length<2);if(P.length<2)return;const opts=P.map((p,i)=>`<option value="${i}">${QF.esc(p.name)}</option>`).join('');$('hx').innerHTML=opts;$('hy').innerHTML=opts;$('hx').value='0';$('hy').value='1'}
+function drawHeat(){
+  if(!ctx||ctx.params.length<2)return;
+  try{
+    const hm=QF.heatmap(ctx,{xi:+$('hx').value,yi:+$('hy').value,scoreJ:+$('score').value,minTrades:+$('minTrades').value||0,agg:$('hagg').value});
+    QF.draw.heat($('heat'),hm);
+    $('heatNote').textContent='Green = positive score, red = negative, brighter = larger; amber outline = best cell. '+hm.filled+' of '+hm.total+' cells contain passes.'+(Number.isFinite(hm.plateau)?' Cells within 80% of the best: '+hm.plateau.toFixed(1)+'% of tested cells (a broad plateau scores high, a lone spike scores near zero).':'')+(hm.others?' The '+hm.others+' other parameter'+(hm.others>1?'s are':' is')+' aggregated by '+(hm.agg==='median'?'median':'best score')+'.':'');
+  }catch(e){$('heatNote').textContent=e.message}
+}
+['hx','hy','hagg'].forEach(id=>$(id).addEventListener('change',drawHeat));
 </script>
 </body></html>

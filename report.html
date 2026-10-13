@@ -1,0 +1,122 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8"><meta name="viewport" content="width=device-width, initial-scale=1">
+<meta http-equiv="Content-Security-Policy" content="connect-src 'self' https://api.anthropic.com">
+<title>Research Report | QuantForge AI</title>
+<link rel="stylesheet" href="assets/tools.css">
+<style>
+.form{display:grid;grid-template-columns:repeat(3,minmax(0,1fr));gap:6px 18px;margin-top:10px}
+.form label{margin:6px 0}
+.form input[type=text]{width:100%;background:var(--panel2);color:#fff;border:1px solid var(--line);border-radius:8px;padding:8px 10px;font:inherit}
+button.small{padding:6px 10px;font-size:13px}
+.ai .form{grid-template-columns:repeat(2,minmax(0,1fr))}
+.ai input[type=password],.ai input[type=text],.ai select{width:100%;background:var(--panel2);color:#fff;border:1px solid var(--line);border-radius:8px;padding:8px 10px;font:inherit}
+.ai pre{white-space:pre-wrap;background:var(--panel2);border:1px solid var(--line);border-radius:10px;padding:14px;max-height:260px;overflow:auto;color:var(--muted);font-size:13px}
+.aitext{white-space:pre-wrap;color:#f5f7fb}
+@media(max-width:700px){.form{grid-template-columns:1fr}}
+</style>
+</head>
+<body>
+<header class="top noprint"><main>
+  <nav class="topnav" aria-label="QuantForge tools">
+    <a href="index.html">← QuantForge AI</a>
+    <a href="analyze.html">Backtest Analyzer</a>
+    <a href="optimize.html">Optimization Check</a>
+    <a href="log.html">Log Reader</a>
+    <a href="review.html">Code Review</a>
+    <a href="testplan.html">Test Plan</a>
+    <a href="compare.html">Compare</a>
+    <a href="report.html" aria-current="page">Research Report</a>
+  </nav>
+  <h1>Research Report <span style="color:#70aaff">v0.1</span></h1>
+  <p>Combine the results from the other tools into one readable report: summary, cross-checks between areas, per-area findings, next steps and an appendix. The text is generated from fixed rules, so nothing is sent to a model or a server. Results are kept in this browser only.</p>
+</main></header>
+<main>
+<section class="panel noprint">
+  <h2>1. Evidence collected</h2>
+  <p class="note">Open any tool, run an analysis and press <em>Add to research report</em>. Up to 12 results are kept in this browser.</p>
+  <div id="items"></div>
+  <button id="demo" class="secondary">Load demo evidence</button>
+  <button id="clear" class="secondary">Clear all</button>
+  <div id="status" class="status" role="status">Loading…</div>
+</section>
+
+<section class="panel noprint">
+  <h2>2. Report details</h2>
+  <div class="form">
+    <label><span>EA / project name</span><input id="ea" type="text" value="My EA"></label>
+    <label><span>Prepared by (optional)</span><input id="author" type="text"></label>
+    <label><span>Purpose (optional)</span><input id="purpose" type="text" placeholder="e.g. pre-launch audit"></label>
+  </div>
+  <button id="gen">Generate report</button>
+  <button id="md" class="secondary" disabled>Download Markdown</button>
+  <button id="print" class="secondary" disabled>Print / save as PDF</button>
+</section>
+
+<section id="aiPanel" class="panel ai noprint hidden">
+  <h2>3. Optional: AI wording <span class="pill">opt-in</span></h2>
+  <p class="note">Asks Claude to rewrite the report above in plainer language. It never sees your CSV, log or .mq5 files: only the report text shown in the preview. The request goes straight from this browser to api.anthropic.com with <strong>your own</strong> API key. QuantForge has no server and does not see the key or the answer. Anthropic API usage is billed to your account.</p>
+  <div class="form">
+    <label><span>Anthropic API key</span><input id="aikey" type="password" autocomplete="off" placeholder="sk-ant-..." spellcheck="false"></label>
+    <label><span>Model</span><select id="aimodel"></select></label>
+    <label><span>Language</span><select id="ailang"><option>English</option><option>Indonesian</option></select></label>
+    <label><span>&nbsp;</span><span><input id="airemember" type="checkbox"> Remember the key in this browser (otherwise it is forgotten when the tab closes)</span></label>
+  </div>
+  <details><summary>Preview exactly what will be sent</summary><pre id="aiprev"></pre></details>
+  <button id="aigo">Reword with Claude</button>
+  <button id="aiforget" class="secondary">Forget key</button>
+  <div id="aistatus" class="status" role="status">Not used. Nothing has been sent.</div>
+  <div id="aiout" class="hidden"><h3>AI-worded summary <span class="pill">generated text</span></h3><div id="aitext" class="aitext"></div><p id="aiwarn" class="note"></p></div>
+</section>
+
+<section id="docPanel" class="panel doc hidden"><div id="doc"></div></section>
+<footer class="noprint">© 2026 QuantForge AI · Research prototype. Not financial advice.</footer>
+</main>
+<script src="assets/qf.js"></script>
+<script src="assets/llm.js"></script>
+<script>
+const $=id=>document.getElementById(id);
+let items=[],demo=false,doc=null,ai=null;
+function load(){items=demo?items:QF.store.list();drawItems()}
+function drawItems(){
+  const st=$('status');
+  if(!items.length){$('items').innerHTML='<p>No evidence yet. Try the <a href="analyze.html">Backtest Analyzer</a>, <a href="log.html">Log Reader</a> or <a href="review.html">Code Review</a>, or load the demo below.</p>';st.className='status';st.textContent='No evidence yet.';return}
+  const n=(it,l)=>it.flags.filter(f=>f.level===l).length;
+  $('items').innerHTML='<div class="table-wrap items"><table><thead><tr><th>Area</th><th>Item</th><th>Saved</th><th>Risk</th><th>Review</th><th></th></tr></thead><tbody>'+items.map(it=>`<tr><td>${QF.esc(QF.areaNames[it.kind]||it.kind)}</td><td>${QF.esc(it.label)}</td><td>${QF.esc(it.savedAt.slice(0,16).replace('T',' '))}</td><td>${n(it,'risk')}</td><td>${n(it,'warn')}</td><td><button class="secondary small" data-id="${QF.esc(it.id)}" aria-label="Remove ${QF.esc(it.label)}">Remove</button></td></tr>`).join('')+'</tbody></table></div>';
+  st.className='status';st.textContent=(demo?'Showing demo evidence (not saved). ':'')+items.length+' result'+(items.length>1?'s':'')+' ready.';
+}
+$('items').addEventListener('click',e=>{const id=e.target.dataset&&e.target.dataset.id;if(!id)return;if(demo)items=items.filter(i=>i.id!==id);else{QF.store.remove(id);items=QF.store.list()}drawItems()});
+$('demo').addEventListener('click',()=>{demo=true;items=QF.demoItems();drawItems()});
+$('clear').addEventListener('click',()=>{if(demo){demo=false}else QF.store.clear();items=QF.store.list();doc=null;$('docPanel').classList.add('hidden');$('aiPanel').classList.add('hidden');ai=null;$('md').disabled=$('print').disabled=true;drawItems()});
+$('gen').addEventListener('click',()=>{
+  try{
+    doc=QF.buildNarrative(items,{ea:$('ea').value.trim(),author:$('author').value.trim(),purpose:$('purpose').value.trim()});
+    $('doc').innerHTML=QF.narrativeToHTML(doc);$('docPanel').classList.remove('hidden');$('md').disabled=$('print').disabled=false;ai=null;$('aiout').classList.add('hidden');$('aiPanel').classList.remove('hidden');$('aiprev').textContent=QF.llm.buildEvidence(doc).text;$('aistatus').textContent='Not used. Nothing has been sent.';$('docPanel').scrollIntoView({behavior:'smooth'});
+  }catch(e){$('status').className='status error';$('status').textContent=e.message}
+});
+$('md').addEventListener('click',()=>{if(doc)QF.ui.download('quantforge-research-report.md',QF.narrativeToMarkdown(doc)+(ai?'\n'+QF.llm.toMarkdown(ai):''))});
+$('print').addEventListener('click',()=>window.print());
+window.addEventListener('storage',()=>{if(!demo)load()});
+
+/* optional AI wording */
+QF.llm.MODELS.forEach(m=>{const o=document.createElement('option');o.value=m.id;o.textContent=m.label;$('aimodel').appendChild(o)});
+$('aikey').value=QF.llm.keyStore.get();$('airemember').checked=!!(function(){try{return localStorage.getItem('qf.llm.key.v1')}catch(e){return ''}})();
+$('aiforget').addEventListener('click',()=>{QF.llm.keyStore.clear();$('aikey').value='';$('airemember').checked=false;$('aistatus').className='status';$('aistatus').textContent='Key removed from this browser.'});
+$('aigo').addEventListener('click',async()=>{
+  const st=$('aistatus'),btn=$('aigo');
+  if(!doc){st.className='status error';st.textContent='Generate the report first.';return}
+  const key=$('aikey').value.trim();
+  btn.disabled=true;st.className='status';st.textContent='Sending the report text to api.anthropic.com…';
+  try{
+    const r=await QF.llm.generate(doc,{apiKey:key,model:$('aimodel').value,language:$('ailang').value});
+    QF.llm.keyStore.set(key,$('airemember').checked);
+    ai=r;$('aitext').textContent=r.text;$('aiout').classList.remove('hidden');
+    $('aiwarn').textContent=(r.unmatched.length?'Check these numbers: they do not appear in the rule-based report ('+r.unmatched.join(', ')+'). ':'All numbers in this text also appear in the report. ')+(r.truncatedInput?'The report was too long and was cut before sending. ':'')+'Model: '+r.model+' · '+r.inputTokens+' tokens in, '+r.outputTokens+' out.';
+    st.textContent='Done. This text is wording only; the rule-based report above is the source of truth.';
+  }catch(e){st.className='status error';st.textContent=e.message}
+  finally{btn.disabled=false}
+});
+load();
+</script>
+</body></html>

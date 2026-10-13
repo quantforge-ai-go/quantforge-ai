@@ -15,6 +15,8 @@
     <a href="log.html">Log Reader</a>
     <a href="review.html" aria-current="page">Code Review</a>
     <a href="testplan.html">Test Plan</a>
+    <a href="compare.html">Compare</a>
+    <a href="report.html">Research Report</a>
   </nav>
   <h1>MQL5 Code Review <span style="color:#70aaff">v0.1</span></h1>
   <p>Paste or upload an Expert Advisor and get a checklist of risk-control and robustness patterns: stop loss, lot and price normalisation, order-result handling, retry loops, exposure caps, kill-switch, indicator handling. Your code is processed in your browser and never uploaded.</p>
@@ -29,6 +31,7 @@
   <button id="run">Review code</button>
   <button id="demo" class="secondary">Load demo EA</button>
   <button id="report" class="secondary" disabled>Download report (.md)</button>
+  <button id="addrep" class="secondary" disabled>Add to research report</button>
   <button id="reset" class="secondary">Reset</button>
   <div id="status" class="status" role="status">No code reviewed yet.</div>
   <p class="muted note">This is a pattern-based scan of the source text, not a compiler or a backtest. It cannot prove the logic is correct.</p>
@@ -56,13 +59,14 @@ function run(name){
     ['overview','findPanel','tablePanel'].forEach(i=>$(i).classList.remove('hidden'));
     QF.ui.metrics($('metrics'),res.metrics);QF.ui.flags($('flags'),res.flags);
     $('tables').innerHTML=res.tables.map(QF.ui.tableHTML).join('');
-    $('report').disabled=false;$('status').className='status';$('status').textContent=label+' \u00b7 '+res.metrics[0].value+' code lines reviewed.';
+    $('report').disabled=false;$('addrep').disabled=false;$('status').className='status';$('status').textContent=label+' \u00b7 '+res.metrics[0].value+' code lines reviewed.';
   }catch(e){$('status').className='status error';$('status').textContent='Could not review: '+e.message}
 }
 $('run').addEventListener('click',()=>run());
 $('file').addEventListener('change',async e=>{const f=e.target.files[0];if(!f)return;try{$('code').value=await QF.readFile(f);run(f.name)}catch(err){$('status').className='status error';$('status').textContent='Could not read file: '+err.message}});
 $('demo').addEventListener('click',()=>{$('code').value=QF.demo.mql();run('Demo EA (synthetic, deliberately flawed)')});
 $('report').addEventListener('click',()=>{if(res)QF.ui.download('quantforge-code-review.md',QF.report({title:'MQL5 code review',source:label,metrics:res.metrics,flags:res.flags,tables:res.tables}))});
-$('reset').addEventListener('click',()=>{res=null;$('file').value='';$('code').value='';$('status').className='status';$('status').textContent='No code reviewed yet.';['overview','findPanel','tablePanel'].forEach(i=>$(i).classList.add('hidden'));$('report').disabled=true});
+$('reset').addEventListener('click',()=>{res=null;$('file').value='';$('code').value='';$('status').className='status';$('status').textContent='No code reviewed yet.';['overview','findPanel','tablePanel'].forEach(i=>$(i).classList.add('hidden'));$('report').disabled=true;$('addrep').disabled=true});
+$('addrep').addEventListener('click',()=>{if(!res)return;const r=QF.store.add('code',label,res,label);$('status').className=r.ok?'status':'status error';$('status').innerHTML=r.ok?'Added to the research report ('+r.count+' saved). <a href="report.html">Open the report</a>':QF.esc(r.error)});
 </script>
 </body></html>

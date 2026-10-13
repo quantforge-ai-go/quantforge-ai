@@ -14,6 +14,8 @@
     <a href="log.html" aria-current="page">Log Reader</a>
     <a href="review.html">Code Review</a>
     <a href="testplan.html">Test Plan</a>
+    <a href="compare.html">Compare</a>
+    <a href="report.html">Research Report</a>
   </nav>
   <h1>EA Log Reader <span style="color:#70aaff">v0.1</span></h1>
   <p>Find what an Expert Advisor is really struggling with: failed orders, retry storms, runtime errors, stop-outs, restarts and log flooding. Files are processed in your browser and never uploaded.</p>
@@ -25,6 +27,7 @@
   <input id="file" type="file" accept=".log,.txt,text/plain" aria-label="Choose a log file">
   <button id="demo">Load demo log</button>
   <button id="report" class="secondary" disabled>Download report (.md)</button>
+  <button id="addrep" class="secondary" disabled>Add to research report</button>
   <button id="reset" class="secondary">Reset</button>
   <div id="status" class="status" role="status">No log loaded yet.</div>
   <p class="muted note">Demo data is synthetic. Classification is pattern-based and can miss wording that differs by broker or MT5 build.</p>
@@ -52,12 +55,13 @@ function load(text,name){
     ['overview','findPanel','tablePanel'].forEach(i=>$(i).classList.remove('hidden'));
     QF.ui.metrics($('metrics'),res.metrics);QF.ui.flags($('flags'),res.flags);
     $('tables').innerHTML=res.tables.map(QF.ui.tableHTML).join('');
-    $('report').disabled=false;$('status').className='status';$('status').textContent=name+' \u00b7 '+res.metrics[0].value+' lines analysed.';
+    $('report').disabled=false;$('addrep').disabled=false;$('status').className='status';$('status').textContent=name+' \u00b7 '+res.metrics[0].value+' lines analysed.';
   }catch(e){$('status').className='status error';$('status').textContent='Could not analyze file: '+e.message}
 }
 $('file').addEventListener('change',async e=>{const f=e.target.files[0];if(!f)return;try{load(await QF.readFile(f),f.name)}catch(err){$('status').className='status error';$('status').textContent='Could not read file: '+err.message}});
 $('demo').addEventListener('click',()=>load(QF.demo.log(),'Demo EA log (synthetic)'));
 $('report').addEventListener('click',()=>{if(res)QF.ui.download('quantforge-log-report.md',QF.report({title:'EA log analysis',source:label,metrics:res.metrics,flags:res.flags,tables:res.tables}))});
-$('reset').addEventListener('click',()=>{res=null;$('file').value='';$('status').className='status';$('status').textContent='No log loaded yet.';['overview','findPanel','tablePanel'].forEach(i=>$(i).classList.add('hidden'));$('report').disabled=true});
+$('reset').addEventListener('click',()=>{res=null;$('file').value='';$('status').className='status';$('status').textContent='No log loaded yet.';['overview','findPanel','tablePanel'].forEach(i=>$(i).classList.add('hidden'));$('report').disabled=true;$('addrep').disabled=true});
+$('addrep').addEventListener('click',()=>{if(!res)return;const r=QF.store.add('log',label,res,label);$('status').className=r.ok?'status':'status error';$('status').innerHTML=r.ok?'Added to the research report ('+r.count+' saved). <a href="report.html">Open the report</a>':QF.esc(r.error)});
 </script>
 </body></html>

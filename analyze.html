@@ -14,6 +14,8 @@
     <a href="log.html">Log Reader</a>
     <a href="review.html">Code Review</a>
     <a href="testplan.html">Test Plan</a>
+    <a href="compare.html">Compare</a>
+    <a href="report.html">Research Report</a>
   </nav>
   <h1>Backtest Analyzer <span style="color:#70aaff">v0.3</span></h1>
   <p>Find structural weaknesses in an MT5 backtest: outlier dependence, hidden tail risk, cost drag, floating drawdown. Files are processed in your browser and never uploaded.</p>
@@ -26,6 +28,7 @@
   <button id="demo">Load trade demo</button>
   <button id="graphDemo" class="secondary">Load graph demo</button>
   <button id="report" class="secondary" disabled>Download report (.md)</button>
+  <button id="addrep" class="secondary" disabled>Add to research report</button>
   <button id="reset" class="secondary">Reset</button>
   <div id="status" class="status" role="status">No data loaded yet.</div>
   <p class="muted note">Demo data is synthetic. Metrics describe the file you supply; they do not predict future results.</p>
@@ -54,6 +57,38 @@
   <div id="breakdowns"></div>
 </section>
 
+<section id="mcPanel" class="panel hidden">
+  <h2>6. Monte Carlo resampling</h2>
+  <p class="note">Re-orders and resamples your trades to show how much of the result and the drawdown depends on the luck of the sequence. Needs at least 20 trades. Trades are treated as independent, so real risk is usually higher than shown. Results are added to the downloaded report.</p>
+  <label><span>Runs per method</span><select id="mcRuns"><option value="1000">1,000</option><option value="5000" selected>5,000</option><option value="10000">10,000</option></select></label>
+  <label><span>Drawdown limit, account currency (optional)</span><input id="mcLimit" type="number" min="0" step="any"></label>
+  <button id="mcRun">Run Monte Carlo</button>
+  <div id="mcFlags"></div><div id="mcTables"></div>
+</section>
+
+<section id="regPanel" class="panel hidden">
+  <h2>7. Time stability and market regimes</h2>
+  <p class="note">Does the result hold across calendar months, and across market conditions? Month results come from the trade timestamps. Market regimes need prices, which a trade list does not contain, so they are optional (below).</p>
+  <div id="perFlags"></div>
+  <canvas id="perChart" class="chart hidden" style="height:200px" role="img" aria-label="Net result by calendar month"></canvas>
+  <div id="perTables"></div>
+  <h3>Market regimes (optional)</h3>
+  <p class="note">Upload bars for the traded symbol: in MT5 open Symbols, go to Bars and export bars to CSV (menu names vary by build). Each trade is assigned the regime measured on bars completed before it opened, with trend and volatility each split into thirds. Results are added to the downloaded report.</p>
+  <input id="priceFile" type="file" accept=".csv,.txt,text/csv,text/plain" aria-label="Choose a price bars CSV file">
+  <label id="regSymLabel" class="hidden"><span>Symbol of the price file</span><select id="regSymbol"></select></label>
+  <button id="regRun">Analyze regimes</button>
+  <button id="regDemo" class="secondary">Use demo prices</button>
+  <div id="regFlags"></div><div id="regTables"></div>
+</section>
+
+<section id="sesPanel" class="panel hidden">
+  <h2>8. Trading sessions</h2>
+  <p class="note">Net result by approximate trading session, based on open time. Broker servers usually run on UTC+2 in winter and UTC+3 in summer; set a fixed offset if yours differs. A wrong offset shifts trades between sessions and can split a pattern across two of them; the "By hour" table in section 5 does not depend on the offset.</p>
+  <label><span>Server clock</span><select id="sesMode"><option value="us-dst">UTC+2 winter / UTC+3 summer (US daylight saving)</option><option value="fixed">Fixed offset from UTC</option></select></label>
+  <label id="sesOffsetLabel" class="hidden"><span>Offset from UTC (hours)</span><input id="sesOffset" type="number" min="-12" max="14" step="0.5" value="2"></label>
+  <div id="sesFlags"></div><div id="sesTables"></div>
+</section>
+
 <section class="panel">
   <h2>Data preview</h2>
   <p class="muted note">First 10 parsed rows.</p>
@@ -67,6 +102,9 @@ const $=id=>document.getElementById(id);
 let current=null,currentLabel="",redrawSeries=null;
 function render(res,label){
   current=res;currentLabel=label;
+  res.base={metrics:res.metrics.slice(),flags:res.flags.slice(),breakdowns:(res.breakdowns||[]).slice()};
+  extras={};setupRegime(res);
+  $('mcPanel').classList.toggle('hidden',!(res.mode==='trades'&&res.nets&&res.nets.length>=20));$('mcFlags').innerHTML='';$('mcTables').innerHTML='';
   $('overview').classList.remove('hidden');$('findPanel').classList.remove('hidden');$('chartPanel').classList.remove('hidden');
   $('modeTag').textContent=res.label;
   QF.ui.metrics($('metrics'),res.metrics);
@@ -78,7 +116,7 @@ function render(res,label){
   $('breakPanel').classList.toggle('hidden',!hasB);
   $('breakdowns').innerHTML=hasB?res.breakdowns.map(QF.ui.tableHTML).join(''):'';
   QF.ui.table($('thead'),$('rows'),res.preview.head,res.preview.rows);
-  $('report').disabled=false;
+  $('report').disabled=false;$('addrep').disabled=false;
   $('status').className='status';$('status').textContent=label+' · '+res.metrics[0].value+' '+(res.mode==='graph'?'graph points':'trades')+' parsed.';
 }
 function loadText(text,label){
@@ -89,7 +127,44 @@ $('file').addEventListener('change',async e=>{const f=e.target.files[0];if(!f)re
 $('demo').addEventListener('click',()=>loadText(QF.demo.trades(),'Demo trade dataset (synthetic)'));
 $('graphDemo').addEventListener('click',()=>loadText(QF.demo.graph(),'Demo graph dataset (synthetic)'));
 $('report').addEventListener('click',()=>{if(!current)return;QF.ui.download('quantforge-backtest-report.md',QF.report({title:'Backtest analysis',source:currentLabel,metrics:current.metrics,flags:current.flags,tables:current.breakdowns}))});
-$('reset').addEventListener('click',()=>{current=null;redrawSeries=null;$('file').value='';$('status').className='status';$('status').textContent='No data loaded yet.';['overview','findPanel','chartPanel','breakPanel'].forEach(i=>$(i).classList.add('hidden'));$('report').disabled=true;$('thead').innerHTML='<tr><th>#</th><th>Data</th></tr>';$('rows').innerHTML='<tr><td>No data</td></tr>'});
+$('reset').addEventListener('click',()=>{current=null;redrawSeries=null;$('file').value='';$('status').className='status';$('status').textContent='No data loaded yet.';['overview','findPanel','chartPanel','breakPanel','mcPanel','regPanel','sesPanel'].forEach(i=>$(i).classList.add('hidden'));$('report').disabled=true;$('addrep').disabled=true;$('thead').innerHTML='<tr><th>#</th><th>Data</th></tr>';$('rows').innerHTML='<tr><td>No data</td></tr>'});
 window.addEventListener('resize',()=>{if(redrawSeries)QF.draw.lines($('chart'),redrawSeries)});
+$('addrep').addEventListener('click',()=>{if(!current)return;const r=QF.store.add('backtest',currentLabel,current,currentLabel);$('status').className=r.ok?'status':'status error';$('status').innerHTML=r.ok?'Added to the research report ('+r.count+' saved). <a href="report.html">Open the report</a>':QF.esc(r.error)});
+$('mcRun').addEventListener('click',()=>{if(!current||!current.nets)return;try{const mc=QF.monteCarlo(current.nets,{runs:+$('mcRuns').value,limit:$('mcLimit').value});extras.mc=mc;applyExtras();QF.ui.flags($('mcFlags'),mc.flags);$('mcTables').innerHTML=mc.tables.map(QF.ui.tableHTML).join('');$('status').className='status';$('status').textContent='Monte Carlo finished ('+mc.runs.toLocaleString('en-US')+' runs per method). It will be included in the downloaded report.'}catch(e){$('status').className='status error';$('status').textContent=e.message}});
+let extras={};
+function applyExtras(){const b=current.base,ex=Object.values(extras);current.metrics=b.metrics.concat(...ex.map(e=>e.metrics||[]));current.flags=b.flags.concat(...ex.map(e=>e.flags||[]));current.breakdowns=b.breakdowns.concat(...ex.map(e=>e.tables||[]))}
+function setupRegime(res){
+  const on=res.mode==='trades'&&res.trades;$('regPanel').classList.toggle('hidden',!on);
+  $('sesPanel').classList.toggle('hidden',!on);
+  ['perFlags','perTables','regFlags','regTables'].forEach(i=>$(i).innerHTML='');$('perChart').classList.add('hidden');$('priceFile').value='';
+  if(!on)return;
+  runSessions();
+  const syms=[...new Set(res.trades.map(t=>t.symbol).filter(Boolean))].sort();
+  $('regSymbol').innerHTML=syms.map(s=>`<option>${QF.esc(s)}</option>`).join('');$('regSymLabel').classList.toggle('hidden',syms.length<2);
+  const per=QF.periodStability(res.trades);
+  if(!per){$('perFlags').innerHTML='<p class="note">Month-level stability needs open times on at least 80% of trades and three or more calendar months.</p>';return}
+  extras.per=per;applyExtras();QF.ui.flags($('perFlags'),per.flags);$('perTables').innerHTML=per.tables.map(QF.ui.tableHTML).join('');
+  $('perChart').classList.remove('hidden');QF.draw.bars($('perChart'),per.chart.labels,per.chart.values);perChartData=per.chart;
+}
+let perChartData=null;
+function runRegime(text){
+  if(!current||!current.trades)return;
+  try{
+    const sym=$('regSymLabel').classList.contains('hidden')?null:$('regSymbol').value;
+    const reg=QF.regimeSplit(current.trades,QF.parsePrices(text),{symbol:sym});
+    extras.reg=reg;applyExtras();QF.ui.flags($('regFlags'),reg.flags);$('regTables').innerHTML=reg.tables.map(QF.ui.tableHTML).join('');
+    $('status').className='status';$('status').textContent='Regime analysis finished ('+reg.metrics[0].value+' trades matched). It will be included in the downloaded report.';
+  }catch(e){$('status').className='status error';$('status').textContent='Could not analyze regimes: '+e.message}
+}
+$('regRun').addEventListener('click',async()=>{const f=$('priceFile').files[0];if(!f){$('status').className='status error';$('status').textContent='Choose a price bars CSV file first, or use the demo prices.';return}try{runRegime(await QF.readFile(f))}catch(e){$('status').className='status error';$('status').textContent='Could not read file: '+e.message}});
+$('regDemo').addEventListener('click',()=>{if(!current)return;if(!$('regSymLabel').classList.contains('hidden'))$('regSymbol').value='EURUSD';runRegime(QF.demo.prices())});
+window.addEventListener('resize',()=>{if(perChartData&&!$('perChart').classList.contains('hidden'))QF.draw.bars($('perChart'),perChartData.labels,perChartData.values)});
+function runSessions(){
+  if(!current||!current.trades)return;
+  const fixed=$('sesMode').value==='fixed';$('sesOffsetLabel').classList.toggle('hidden',!fixed);
+  try{const r=QF.sessionSplit(current.trades,{mode:fixed?'fixed':'us-dst',offset:+$('sesOffset').value});extras.ses=r;applyExtras();QF.ui.flags($('sesFlags'),r.flags);$('sesTables').innerHTML=r.tables.map(QF.ui.tableHTML).join('')}
+  catch(e){delete extras.ses;applyExtras();$('sesFlags').innerHTML='';$('sesTables').innerHTML='<p class="note">'+QF.esc(e.message)+'</p>'}
+}
+$('sesMode').addEventListener('change',runSessions);$('sesOffset').addEventListener('change',runSessions);
 </script>
 </body></html>

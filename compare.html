@@ -1,0 +1,99 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8"><meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Backtest Comparison | QuantForge AI</title>
+<link rel="stylesheet" href="assets/tools.css">
+<style>
+.slot{display:grid;grid-template-columns:minmax(120px,200px) 1fr;gap:12px;align-items:center;padding:10px 0;border-bottom:1px solid var(--line)}
+.slot input[type=text]{background:var(--panel2);color:#fff;border:1px solid var(--line);border-radius:8px;padding:8px 10px;font:inherit;width:100%}
+.slot input[type=file]{margin:0}
+td{white-space:normal}
+@media(max-width:700px){.slot{grid-template-columns:1fr}}
+</style>
+</head>
+<body>
+<header class="top"><main>
+  <nav class="topnav" aria-label="QuantForge tools">
+    <a href="index.html">← QuantForge AI</a>
+    <a href="analyze.html">Backtest Analyzer</a>
+    <a href="optimize.html">Optimization Check</a>
+    <a href="log.html">Log Reader</a>
+    <a href="review.html">Code Review</a>
+    <a href="testplan.html">Test Plan</a>
+    <a href="compare.html" aria-current="page">Compare</a>
+    <a href="report.html">Research Report</a>
+  </nav>
+  <h1>Backtest Comparison <span style="color:#70aaff">v0.1</span></h1>
+  <p>Compare two to four runs side by side, for example an EA before and after a change. The tool shows what moved, flags trade-offs hidden behind a better headline number, and tests whether a per-trade difference is more than noise. Files are processed in your browser and never uploaded.</p>
+</main></header>
+<main>
+<section class="panel">
+  <h2>1. Add the runs</h2>
+  <p>Use the same kind of file for every run: all closed-trade / deals CSVs, or all Strategy Tester graph CSVs. The first run is the baseline. Trade lists enable the noise test, so prefer them.</p>
+  <div id="slots"></div>
+  <button id="add" class="secondary">Add run</button>
+  <button id="compare">Compare runs</button>
+  <button id="demo" class="secondary">Load demo (3 runs)</button>
+  <button id="report" class="secondary" disabled>Download report (.md)</button>
+  <button id="addrep" class="secondary" disabled>Add to research report</button>
+  <button id="reset" class="secondary">Reset</button>
+  <div id="status" class="status" role="status">No comparison yet.</div>
+  <p class="muted note">Demo data is synthetic. A comparison shows how files differ; it cannot say which setup will perform better live.</p>
+</section>
+
+<section id="overview" class="hidden"><h2>2. Overview</h2><div id="metrics" class="metrics"></div></section>
+<section id="findPanel" class="panel hidden"><h2>3. Findings</h2><div id="flags"></div></section>
+<section id="chartPanel" class="panel hidden">
+  <h2>4. Curves</h2>
+  <p class="note">Each curve is resampled to the same length so runs with different trade counts line up by progress through the test. Trade lists show cumulative net P/L; graph files show equity change.</p>
+  <canvas id="chart" class="chart" role="img" aria-label="Overlay of performance curves for each run"></canvas>
+  <p id="legend" class="legend note"></p>
+</section>
+<section id="tablePanel" class="panel hidden"><h2>5. Details</h2><div id="tables"></div></section>
+<footer>© 2026 QuantForge AI · Research prototype. Not financial advice.</footer>
+</main>
+<script src="assets/qf.js"></script>
+<script>
+const $=id=>document.getElementById(id);let res=null,source="",series=null;
+const NAMES=["Run A (baseline)","Run B","Run C","Run D"];
+function addSlot(){
+  const n=$('slots').children.length;if(n>=4)return;
+  const d=document.createElement('div');d.className='slot';
+  d.innerHTML=`<input type="text" aria-label="Name of run ${n+1}" value="${NAMES[n]}"><input type="file" accept=".csv,.txt,text/csv,text/plain" aria-label="File for run ${n+1}">`;
+  $('slots').appendChild(d);$('add').disabled=$('slots').children.length>=4;
+}
+function render(r,src){
+  res=r;source=src;series=r.series;
+  ['overview','findPanel','chartPanel','tablePanel'].forEach(i=>$(i).classList.remove('hidden'));
+  QF.ui.metrics($('metrics'),r.metrics);QF.ui.flags($('flags'),r.flags);
+  $('tables').innerHTML=r.tables.map(QF.ui.tableHTML).join('');
+  $('legend').innerHTML=r.series.map(s=>`<span style="color:${s.color}">━ ${QF.esc(s.name)}</span>`).join(' &nbsp; ');
+  QF.draw.lines($('chart'),r.series);
+  $('report').disabled=false;$('addrep').disabled=false;$('status').className='status';$('status').textContent=src+' \u00b7 '+r.series.length+' runs compared.';
+}
+function fail(m){$('status').className='status error';$('status').textContent=m}
+function run(runs,src){try{render(QF.compareRuns(runs),src)}catch(e){fail('Could not compare: '+e.message)}}
+$('add').addEventListener('click',addSlot);
+$('compare').addEventListener('click',async()=>{
+  const runs=[];
+  for(const [i,d] of [...$('slots').children].entries()){
+    const f=d.querySelector('input[type=file]').files[0];if(!f)continue;
+    const label=d.querySelector('input[type=text]').value.trim()||('Run '+(i+1));
+    try{const p=QF.parseAnalyzerInput(await QF.readFile(f));runs.push({label,mode:p.mode,data:p.data,meta:p.meta})}
+    catch(e){return fail(label+' ('+f.name+'): '+e.message)}
+  }
+  if(runs.length<2)return fail('Choose files for at least two runs.');
+  run(runs,runs.map(r=>r.label).join(' vs '));
+});
+$('demo').addEventListener('click',()=>{
+  const mk=(l,o)=>{const p=QF.parseAnalyzerInput(QF.demo.trades(o));return{label:l,mode:p.mode,data:p.data,meta:p.meta}};
+  run([mk('A baseline'),mk('B v2 filter',{seed:8,winP:0.70}),mk('C no stop loss',{seed:9,winP:0.82,lossScale:2.6})],'Demo: three synthetic EA versions');
+});
+$('report').addEventListener('click',()=>{if(res)QF.ui.download('quantforge-comparison.md',QF.report({title:'Backtest comparison',source:source,metrics:res.metrics,flags:res.flags,tables:res.tables}))});
+$('reset').addEventListener('click',()=>{res=null;series=null;$('slots').innerHTML='';addSlot();addSlot();$('status').className='status';$('status').textContent='No comparison yet.';['overview','findPanel','chartPanel','tablePanel'].forEach(i=>$(i).classList.add('hidden'));$('report').disabled=true;$('addrep').disabled=true});
+window.addEventListener('resize',()=>{if(series)QF.draw.lines($('chart'),series)});
+addSlot();addSlot();
+$('addrep').addEventListener('click',()=>{if(!res)return;const r=QF.store.add('comparison',source,res,source);$('status').className=r.ok?'status':'status error';$('status').innerHTML=r.ok?'Added to the research report ('+r.count+' saved). <a href="report.html">Open the report</a>':QF.esc(r.error)});
+</script>
+</body></html>

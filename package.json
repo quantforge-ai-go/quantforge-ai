@@ -1,9 +1,7 @@
 {
   "name": "quantforge-ai",
-  "version": "0.13.0",
+  "version": "0.12.0",
   "private": true,
   "description": "Research tools for MT5 Expert Advisor developers (client-side).",
-  "scripts": {
-    "test": "node tests/smoke.js"
-  }
+  "scripts": { "test": "node tests/smoke.js" }
 }

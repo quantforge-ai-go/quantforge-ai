@@ -28,18 +28,6 @@ QuantForge AI does **not** sell trading signals or promise profit. It helps deve
 
 Shared logic lives in `assets/qf.js` (no DOM dependency apart from `QF.ui` / `QF.draw`, so it can be tested in Node). Styles are in `assets/tools.css`.
 
-## Optional AI wording (Claude API, opt-in)
-
-`report.html` has an extra panel after the report is generated. It is off by default and nothing leaves the browser unless the user presses **Reword with Claude**.
-
-- Bring-your-own-key: the user pastes an Anthropic API key. It is kept in `sessionStorage` (or `localStorage` if they tick *Remember*) and is never put in the report or the Markdown export.
-- What is sent: only the deterministic report text and metrics (shown in a preview). Never the CSV, log or `.mq5` files.
-- Direct browser → `api.anthropic.com` call (`anthropic-dangerous-direct-browser-access` header). `report.html` carries a CSP `connect-src 'self' https://api.anthropic.com`, so the page cannot contact anything else.
-- The system prompt forbids new numbers, predictions and advice, and tells the model to treat the evidence as data (log/code text can contain injected instructions).
-- Guard: every number in the AI text is compared with the report; unmatched numbers are shown as a warning. The AI text is labelled and only added to the Markdown export when present.
-- Logic lives in `assets/llm.js` (tested in Node with a mock `fetch`). Models are listed in `QF.llm.MODELS`.
-- Not suitable for a hosted, paid feature: that needs a backend proxy so your own key never reaches the browser.
-
 ## Run locally
 
 Open `index.html` in a browser, or serve the folder:
@@ -54,7 +42,7 @@ python3 -m http.server 8000
 npm test        # or: node tests/smoke.js
 ```
 
-64 smoke tests cover parsing (decimal commas, in/out deals), the analyzer, Monte Carlo (reproducibility, consistency with the analyzer), month stability, regime and session splits (including a planted-dependence case and a no-false-alarm case), optimization and heatmap, log reader, code review (including false-positive guards), test plan, comparison and the research report. Most use synthetic demo data. `tests/fixtures/` holds real MT5 exports (so far: a Strategy Tester graph export in UTF-16 with tab separation and `<DATE>`-style headers); more real files make the suite far more trustworthy.
+56 smoke tests cover parsing (decimal commas, in/out deals), the analyzer, Monte Carlo (reproducibility, consistency with the analyzer), month stability, regime and session splits (including a planted-dependence case and a no-false-alarm case), optimization and heatmap, log reader, code review (including false-positive guards), test plan, comparison and the research report. Most use synthetic demo data. `tests/fixtures/` holds real MT5 exports (so far: a Strategy Tester graph export in UTF-16 with tab separation and `<DATE>`-style headers); more real files make the suite far more trustworthy.
 
 ## Principles
 
@@ -64,6 +52,6 @@ npm test        # or: node tests/smoke.js
 
 ## Roadmap
 
-1. ~~Optional, opt-in LLM wording~~ — done in v0.13 (see below). Next: let the same button explain a single tool's findings, not only the combined report
+1. Optional, opt-in LLM wording on top of the rule-based report (user supplies their own key; nothing is sent unless they choose to)
 2. Regression fixtures built from real (anonymised) MT5 exports, added to `tests/` (the main outstanding risk: parsers and thresholds are validated on synthetic data)
 3. Spread and slippage sensitivity from a trade list with per-trade costs
